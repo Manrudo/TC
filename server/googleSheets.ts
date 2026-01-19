@@ -21,19 +21,21 @@ function loadServiceAccount() {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   if (!raw) throw new Error("Missing env GOOGLE_SERVICE_ACCOUNT_JSON");
 
-  // Allow either plain JSON or base64 JSON
+  // Accept either raw JSON or base64 JSON
   const jsonString = raw.trim().startsWith("{")
     ? raw
     : Buffer.from(raw, "base64").toString("utf8");
 
   const creds = JSON.parse(jsonString);
-
-  // Render env vars sometimes escape newlines; fix private_key
+// Fix escaped newlines in private key
   if (creds.private_key && typeof creds.private_key === "string") {
     creds.private_key = creds.private_key.replace(/\\n/g, "\n");
   }
 
-  return creds;
+  return creds as {
+    client_email: string;
+    private_key: string;
+  };
 }
 
 async function getSheetsClient() {
