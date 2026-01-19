@@ -1,41 +1,189 @@
+{
+  "name": "rest-express",
+  "version": "1.0.0",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "dev": "NODE_ENV=development tsx server/index.ts",
+    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "start": "NODE_ENV=production node dist/index.js",
+    "check": "tsc",
+    "db:push": "drizzle-kit push"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^3.10.0",
+    "@jridgewell/trace-mapping": "^0.3.25",
+    "@neondatabase/serverless": "^0.10.4",
+    "@radix-ui/react-accordion": "^1.2.4",
+    "@radix-ui/react-alert-dialog": "^1.1.7",
+    "@radix-ui/react-aspect-ratio": "^1.1.3",
+    "@radix-ui/react-avatar": "^1.1.4",
+    "@radix-ui/react-checkbox": "^1.1.5",
+    "@radix-ui/react-collapsible": "^1.1.4",
+    "@radix-ui/react-context-menu": "^2.2.7",
+    "@radix-ui/react-dialog": "^1.1.7",
+    "@radix-ui/react-dropdown-menu": "^2.1.7",
+    "@radix-ui/react-hover-card": "^1.1.7",
+    "@radix-ui/react-label": "^2.1.3",
+    "@radix-ui/react-menubar": "^1.1.7",
+    "@radix-ui/react-navigation-menu": "^1.2.6",
+    "@radix-ui/react-popover": "^1.1.7",
+    "@radix-ui/react-progress": "^1.1.3",
+    "@radix-ui/react-radio-group": "^1.2.4",
+    "@radix-ui/react-scroll-area": "^1.2.4",
+    "@radix-ui/react-select": "^2.1.7",
+    "@radix-ui/react-separator": "^1.1.3",
+    "@radix-ui/react-slider": "^1.2.4",
+    "@radix-ui/react-slot": "^1.2.0",
+    "@radix-ui/react-switch": "^1.1.4",
+    "@radix-ui/react-tabs": "^1.1.4",
+    "@radix-ui/react-toast": "^1.2.7",
+    "@radix-ui/react-toggle": "^1.1.3",
+    "@radix-ui/react-toggle-group": "^1.1.3",
+    "@radix-ui/react-tooltip": "^1.2.0",
+    "@tanstack/react-query": "^5.60.5",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
+    "connect-pg-simple": "^10.0.0",
+    "date-fns": "^3.6.0",
+    "drizzle-orm": "^0.39.1",
+    "drizzle-zod": "^0.7.0",
+    "embla-carousel-react": "^8.6.0",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "framer-motion": "^11.13.1",
+    "googleapis": "^148.0.0",
+    "input-otp": "^1.4.2",
+    "lucide-react": "^0.453.0",
+    "memorystore": "^1.6.7",
+    "next-themes": "^0.4.6",
+    "nodemailer": "^7.0.11",
+    "passport": "^0.7.0",
+    "passport-local": "^1.0.0",
+    "react": "^18.3.1",
+    "react-day-picker": "^8.10.1",
+    "react-dom": "^18.3.1",
+    "react-hook-form": "^7.55.0",
+    "react-icons": "^5.4.0",
+    "react-resizable-panels": "^2.1.7",
+    "recharts": "^2.15.2",
+    "tailwind-merge": "^2.6.0",
+    "tailwindcss-animate": "^1.0.7",
+    "tw-animate-css": "^1.2.5",
+    "vaul": "^1.1.2",
+    "wouter": "^3.3.5",
+    "ws": "^8.18.0",
+    "zod": "^3.24.2",
+    "zod-validation-error": "^3.4.0"
+  },
+  "devDependencies": {
+    "@replit/vite-plugin-cartographer": "^0.4.2",
+    "@replit/vite-plugin-dev-banner": "^0.1.1",
+    "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
+    "@tailwindcss/typography": "^0.5.15",
+    "@tailwindcss/vite": "^4.1.3",
+    "@types/connect-pg-simple": "^7.0.3",
+    "@types/express": "4.17.21",
+    "@types/express-session": "^1.18.0",
+    "@types/node": "20.16.11",
+    "@types/passport": "^1.0.16",
+    "@types/passport-local": "^1.0.38",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.1",
+    "@types/ws": "^8.5.13",
+    "@vitejs/plugin-react": "^4.7.0",
+    "autoprefixer": "^10.4.20",
+    "drizzle-kit": "^0.31.4",
+    "esbuild": "^0.25.0",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.20.5",
+    "typescript": "5.6.3",
+    "vite": "^5.4.20"
+  },
+  "optionalDependencies": {
+    "bufferutil": "^4.0.8"
+  }
+}
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 
-app.use(express.json());
+declare module 'http' {
+  interface IncomingMessage {
+    rawBody: unknown
+  }
+}
+app.use(express.json({
+  verify: (req, _res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 app.use(express.urlencoded({ extended: false }));
 
-// Request logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
+  const path = req.path;
+  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+
+  const originalResJson = res.json;
+  res.json = function (bodyJson, ...args) {
+    capturedJsonResponse = bodyJson;
+    return originalResJson.apply(res, [bodyJson, ...args]);
+  };
+
   res.on("finish", () => {
     const duration = Date.now() - start;
-    if (req.path.startsWith("/api")) {
-      log(`${req.method} ${req.path} ${res.statusCode} in ${duration}ms`);
+    if (path.startsWith("/api")) {
+      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      if (capturedJsonResponse) {
+        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+      }
+
+      if (logLine.length > 80) {
+        logLine = logLine.slice(0, 79) + "…";
+      }
+
+      log(logLine);
     }
   });
+
   next();
 });
 
 (async () => {
   const server = await registerRoutes(app);
 
-  // Error handling middleware
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    res.status(status).json({ message: err.message || "Internal Server Error" });
+    const message = err.message || "Internal Server Error";
+
+    res.status(status).json({ message });
+    throw err;
   });
 
+  // importantly only setup vite in development and after
+  // setting up all the other routes so the catch-all route
+  // doesn't interfere with the other routes
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
+  // ALWAYS serve the app on the port specified in the environment variable PORT
+  // Other ports are firewalled. Default to 5000 if not specified.
+  // this serves both the API and the client.
+  // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen(port, "0.0.0.0", () => {
+  server.listen({
+    port,
+    host: "0.0.0.0",
+    reusePort: true,
+  }, () => {
     log(`serving on port ${port}`);
   });
 })();
@@ -51,19 +199,235 @@ export async function registerRoutes(app: Express) {
       const { name, email, company, message, recipientEmail } = req.body;
 
       if (!name || !email || !message || !recipientEmail) {
+        console.error('Validation failed - missing fields:', { name: !!name, email: !!email, message: !!message, recipientEmail: !!recipientEmail });
         return res.status(400).json({ error: 'Missing required fields' });
       }
 
-      // 1. Save to Google Sheets
-      await appendContactToSheet(name, email, company || 'N/A', message);
+      console.log('✓ Contact form submission received:', { name, email, company, recipientEmail });
       
-      // 2. Send Email Notification
-      await sendContactEmailNotification(name, email, company || 'N/A', message, recipientEmail);
+      const results = {
+        sheetsSuccess: false,
+        emailSuccess: false,
+        errors: [] as string[]
+      };
 
+      // Append to Google Sheets
+      try {
+        console.log('📊 Attempting to append to Google Sheets...');
+        await appendContactToSheet(name, email, company || 'N/A', message);
+        results.sheetsSuccess = true;
+        console.log('✓ Successfully appended to Google Sheets');
+      } catch (sheetsError) {
+        const errorMsg = `Google Sheets error: ${String(sheetsError)}`;
+        console.error('✗ Failed to append to Google Sheets:', sheetsError);
+        results.errors.push(errorMsg);
+      }
+
+      // Send email notification
+      try {
+        console.log('📧 Attempting to send email notification...');
+        const emailResult = await sendContactEmailNotification(name, email, company || 'N/A', message, recipientEmail);
+        if (emailResult.success) {
+          results.emailSuccess = true;
+          console.log('✓ Email notification sent successfully');
+        } else {
+          const errorMsg = `Email not sent: ${emailResult.reason}`;
+          console.warn('⚠ ' + errorMsg);
+          results.errors.push(errorMsg);
+        }
+      } catch (emailError) {
+        const errorMsg = `Email send error: ${String(emailError)}`;
+        console.error('✗ Failed to send email:', emailError);
+        results.errors.push(errorMsg);
+      }
+
+      // Success response - data was received and at least one destination worked
+      const successMessage = [];
+      if (results.sheetsSuccess) successMessage.push('saved to Google Sheets');
+      if (results.emailSuccess) successMessage.push('email sent');
+      if (successMessage.length === 0 && results.errors.length === 0) {
+        successMessage.push('received and queued for processing');
+      }
+
+      console.log('✓ Request complete. Results:', results);
+      
       res.json({ 
         success: true, 
-        message: "Contact form saved to Google Sheets and email sent."
+        message: `Contact form ${successMessage.join(' and ')}.`,
+        debug: results
       });
     } catch (error) {
-      console.error('Contact form error:', error);
-      res.status(
+      console.error('✗ Contact form error:', error);
+      res.status(500).json({ error: 'Failed to process contact form', details: String(error) });
+    }
+  });
+
+  return createServer(app);
+}
+import { google } from 'googleapis';
+
+let connectionSettings: any;
+
+async function getAccessToken() {
+  if (connectionSettings && connectionSettings.settings.expires_at && new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
+    return connectionSettings.settings.access_token;
+  }
+  
+  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME
+  const xReplitToken = process.env.REPL_IDENTITY 
+    ? 'repl ' + process.env.REPL_IDENTITY 
+    : process.env.WEB_REPL_RENEWAL 
+    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
+    : null;
+
+  if (!xReplitToken) {
+    throw new Error('X_REPLIT_TOKEN not found for repl/depl');
+  }
+
+  connectionSettings = await fetch(
+    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=google-sheet',
+    {
+      headers: {
+        'Accept': 'application/json',
+        'X_REPLIT_TOKEN': xReplitToken
+      }
+    }
+  ).then(res => res.json()).then(data => data.items?.[0]);
+
+  const accessToken = connectionSettings?.settings?.access_token || connectionSettings.settings?.oauth?.credentials?.access_token;
+
+  if (!connectionSettings || !accessToken) {
+    throw new Error('Google Sheet not connected');
+  }
+  return accessToken;
+}
+
+export async function getUncachableGoogleSheetClient() {
+  const accessToken = await getAccessToken();
+
+  const oauth2Client = new google.auth.OAuth2();
+  oauth2Client.setCredentials({
+    access_token: accessToken
+  });
+
+  return google.sheets({ version: 'v4', auth: oauth2Client });
+}
+
+export async function appendContactToSheet(name: string, email: string, company: string, message: string) {
+  try {
+    const sheets = await getUncachableGoogleSheetClient();
+    const spreadsheetId = '1UsiiJ57lVpYmidvqb27azacD1cwa0hDrH1A6NwL9LyA';
+    const now = new Date().toLocaleString();
+
+    const result = await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: 'Sheet1!A:E',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [[name, email, company, message, now]],
+      },
+    });
+
+    console.log('Data appended to Google Sheets:', result.data);
+    return result;
+  } catch (error) {
+    console.error('Error appending to Google Sheets:', error);
+    throw error;
+  }
+}
+import nodemailer from 'nodemailer';
+
+export async function sendContactEmailNotification(
+  name: string,
+  email: string,
+  company: string,
+  message: string,
+  recipientEmail: string
+) {
+  try {
+    // Use environment variables for SMTP configuration
+    const smtpHost = process.env.SMTP_HOST;
+    const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPass = process.env.SMTP_PASSWORD;
+
+    if (!smtpHost || !smtpUser || !smtpPass) {
+      console.warn('Email configuration incomplete. Emails will not be sent.');
+      console.warn('Please configure: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD');
+      return { success: false, reason: 'Email service not configured' };
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+    });
+
+    const mailOptions = {
+      to: recipientEmail,
+      from: smtpUser,
+      subject: `New Consultation Request from ${name}`,
+      html: `
+        <h2>New Contact Form Submission</h2>
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Company:</strong> ${company || 'Not provided'}</p>
+        <p><strong>Message:</strong></p>
+        <p>${message.replace(/\n/g, '<br>')}</p>
+        <p><strong>Submitted at:</strong> ${new Date().toLocaleString()}</p>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log('✓ Email sent successfully to:', recipientEmail);
+    return { success: true };
+  } catch (error) {
+    console.error('✗ Failed to send email:', error);
+    return { success: false, error: String(error) };
+  }
+}
+import { sql } from "drizzle-orm";
+import { pgTable, text, varchar } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
+});
+
+export const insertUserSchema = createInsertSchema(users).pick({
+  username: true,
+  password: true,
+});
+
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;
+{
+  "include": ["client/src/**/*", "shared/**/*", "server/**/*"],
+  "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
+    "noEmit": true,
+    "module": "ESNext",
+    "strict": true,
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "jsx": "preserve",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "types": ["node", "vite/client"],
+    "paths": {
+      "@/*": ["./client/src/*"],
+      "@shared/*": ["./shared/*"]
+    }
+  }
+}
