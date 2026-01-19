@@ -1,7 +1,7 @@
 import sgMail from "@sendgrid/mail";
 
 // Env vars required:
-// SENDGRID_API_KEY=Eaz2PdWGRjuvWEsPuSSdkA
+// SENDGRID_API_KEY=Su-bAHQOSwuSRlYSZd6i4g
 // SENDGRID_FROM_EMAIL=hello@mellemdata.com
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY || "");
