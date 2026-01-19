@@ -1,3 +1,27 @@
+server
+  index.ts
+  routes.ts
+  googleSheets.ts
+  email.ts
+/shared
+  schema.ts
+package.json
+tsconfig.json
+
+"scripts": {
+  "build": "tsc",
+  "start": "node dist/server/index.js"
+}
+
+"dependencies": {
+  "express": "^4.x",
+  "@sendgrid/mail": "^7.x",
+  "googleapis": "^118.x"
+}
+
+"devDependencies": {
+  "typescript": "^5.x"
+}
 {
   "name": "rest-express",
   "version": "1.0.0",
@@ -430,4 +454,16 @@ export type User = typeof users.$inferSelect;
       "@shared/*": ["./shared/*"]
     }
   }
+}
+{
+  "compilerOptions": {
+    "target": "ES2019",
+    "module": "commonjs",
+    "rootDir": "./",
+    "outDir": "./dist",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "strict": false
+  },
+  "include": ["server", "shared"]
 }
