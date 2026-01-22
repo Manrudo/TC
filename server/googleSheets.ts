@@ -1,69 +1,71 @@
-import { google } from "googleapis";
+import { google } from 'googleapis';
 
-type ServiceAccountCreds = {
-  client_email: string;
-  private_key: string;
-};
+let connectionSettings: any;
 
-function loadServiceAccount(): ServiceAccountCreds {
-  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  if (!raw) {
-    throw new Error("Missing env GOOGLE_SERVICE_ACCOUNT_JSON");
+async function getAccessToken() {
+  if (connectionSettings && connectionSettings.settings.expires_at && new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
+    return connectionSettings.settings.access_token;
+  }
+  
+  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME
+  const xReplitToken = process.env.REPL_IDENTITY 
+    ? 'repl ' + process.env.REPL_IDENTITY 
+    : process.env.WEB_REPL_RENEWAL 
+    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
+    : null;
+
+  if (!xReplitToken) {
+    throw new Error('X_REPLIT_TOKEN not found for repl/depl');
   }
 
-  let jsonString = raw.trim();
-  if (!jsonString.startsWith("{")) {
-    jsonString = Buffer.from(jsonString, "base64").toString("utf8");
+  connectionSettings = await fetch(
+    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=google-sheet',
+    {
+      headers: {
+        'Accept': 'application/json',
+        'X_REPLIT_TOKEN': xReplitToken
+      }
+    }
+  ).then(res => res.json()).then(data => data.items?.[0]);
+
+  const accessToken = connectionSettings?.settings?.access_token || connectionSettings.settings?.oauth?.credentials?.access_token;
+
+  if (!connectionSettings || !accessToken) {
+    throw new Error('Google Sheet not connected');
   }
-
-  const creds = JSON.parse(jsonString) as ServiceAccountCreds;
-
-  if (typeof creds.private_key === "string") {
-    creds.private_key = creds.private_key.replace(/\\n/g, "\n");
-  }
-
-  if (!creds.client_email || !creds.private_key) {
-    throw new Error("Invalid service account JSON (missing client_email/private_key)");
-  }
-
-  return creds;
+  return accessToken;
 }
 
-async function getSheetsClient() {
-  const creds = loadServiceAccount();
+export async function getUncachableGoogleSheetClient() {
+  const accessToken = await getAccessToken();
 
-  const auth = new google.auth.JWT({
-    email: creds.client_email,
-    key: creds.private_key,
-    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+  const oauth2Client = new google.auth.OAuth2();
+  oauth2Client.setCredentials({
+    access_token: accessToken
   });
 
-  return google.sheets({ version: "v4", auth });
+  return google.sheets({ version: 'v4', auth: oauth2Client });
 }
 
-export async function appendContactToSheet(
-  name: string,
-  email: string,
-  company: string,
-  message: string
-) {
-  const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
-  if (!spreadsheetId) {
-    throw new Error("Missing env GOOGLE_SHEETS_SPREADSHEET_ID");
+export async function appendContactToSheet(name: string, email: string, company: string, message: string) {
+  try {
+    const sheets = await getUncachableGoogleSheetClient();
+    const spreadsheetId = '1UsiiJ57lVpYmidvqb27azacD1cwa0hDrH1A6NwL9LyA';
+    const now = new Date().toLocaleString();
+
+    const result = await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: 'Sheet1!A:E',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [[name, email, company, message, now]],
+      },
+    });
+
+    console.log('Data appended to Google Sheets:', result.data);
+    return result;
+  } catch (error) {
+    console.error('Error appending to Google Sheets:', error);
+    throw error;
   }
-
-  const range = process.env.GOOGLE_SHEETS_RANGE || "Sheet1!A:E";
-
-  const sheets = await getSheetsClient();
-  const now = new Date().toISOString();
-
-  await sheets.spreadsheets.values.append({
-    spreadsheetId,
-    range,
-    valueInputOption: "USER_ENTERED",
-    requestBody: {
-      values: [[name, email, company, message, now]],
-    },
-  });
 }
-
